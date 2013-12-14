@@ -1,0 +1,15 @@
+Source: openmediavault-headphones
+Section: misc
+Priority: optional
+Maintainer: OpenMediaVault Plugin Developers <plugins@omv-extras.org>
+Build-Depends: debhelper (>= 7 )
+Standards-Version: 3.9.3
+
+Package: openmediavault-headphones
+Architecture: all
+Depends: ${misc:Depends}, openmediavault (>= 0.5), openmediavault (<< 0.6),
+ python, python-cheetah, python-configobj, python-feedparser,
+ par2, python-openssl, python-yenc, unzip, python-support, git,
+ unrar
+Description: OpenMediaVault headphones plugin
+ headphones is an automatic music downloader for SABnzbd.

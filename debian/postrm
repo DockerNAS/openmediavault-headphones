@@ -1,0 +1,32 @@
+#!/bin/sh
+#
+set -e
+
+. /etc/default/openmediavault
+. /usr/share/openmediavault/scripts/helper-functions
+
+case "$1" in
+    purge)
+        # Remove the configuration data.
+        #/etc/init.d/headphones stop &>/dev/null
+
+        rm -Rf /opt/headphones/* &>/dev/null
+
+        if [ -f "/var/run/headphones.pid" ]; then
+            PID=$(cat /var/run/headphones.pid);
+            kill -0 $PID 2>/dev/null;
+        fi
+        omv_config_delete "//services/headphones"
+        userdel headphones
+        ;;
+
+    remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+        ;;
+
+    *)
+        echo "postrm called with unknown argument '$1'" >&2
+        exit 1
+        ;;
+esac
+
+exit 0
