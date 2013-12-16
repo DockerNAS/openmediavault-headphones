@@ -60,7 +60,7 @@ class OMVModuleHeadphones extends OMVModuleServiceAbstract
                 $cmd = "/etc/init.d/headphones status";
                 $this->exec($cmd, $output);
                 if (strpos($output[0], 'failed!') > 0);
-                        $cmd = "/etc/init.d/headphones start 2>&1";
+                        $cmd = "update-rc.d headphones enable && service headphones start 2>&1";
                         $this->exec($cmd, $output);
     }
 
@@ -77,7 +77,7 @@ class OMVModuleHeadphones extends OMVModuleServiceAbstract
                 $cmd = "/etc/init.d/headphones status";
                 $this->exec($cmd, $output);
                 if (strpos($output[0], 'is running') > 0);
-                        $cmd = "/etc/init.d/headphones stop 2>&1";
+                        $cmd = "service headphones stop && update-rc.d headphones disable 2>&1";
                         $this->exec($cmd, $output);
     }
 
