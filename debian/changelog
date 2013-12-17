@@ -1,3 +1,9 @@
+openmediavault-headphones (0.5.1) stable; urgency=low
+
+  * Change icon
+
+ -- OpenMediaVault Plugin Developers <plugins@omv-extras.org>  Tue, 17 Dec 2013 11:18:27 -0500
+
 openmediavault-headphones (0.5) stable; urgency=low
 
   * Initial release
