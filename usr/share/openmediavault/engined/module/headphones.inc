@@ -57,11 +57,8 @@ class OMVModuleHeadphones extends OMVModuleServiceAbstract
         if(FALSE === boolval($object['enable']))
             return;
 
-                $cmd = "/etc/init.d/headphones status";
-                $this->exec($cmd, $output);
-                if (strpos($output[0], 'failed!') > 0);
-                        $cmd = "update-rc.d headphones defaults && service headphones start 2>&1";
-                        $this->exec($cmd, $output);
+                $initd = new OMVSysVInitScript("headphones", TRUE);
+                $initd->exec();
     }
 
     public function stopService() {
@@ -74,11 +71,8 @@ class OMVModuleHeadphones extends OMVModuleServiceAbstract
         if(TRUE === boolval($object['enable']))
             return;
 
-                $cmd = "/etc/init.d/headphones status";
-                $this->exec($cmd, $output);
-                if (strpos($output[0], 'is running') > 0);
-                        $cmd = "service headphones stop && update-rc.d headphones disable 2>&1";
-                        $this->exec($cmd, $output);
+                $initd = new OMVSysVInitScript("headphones", FALSE);
+                $initd->exec();
     }
 
     public function bindListeners(OMVNotifyDispatcher $dispatcher) {
