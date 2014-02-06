@@ -7,26 +7,41 @@ set -e
 
 case "$1" in
     purge)
-        # Remove the configuration data.
-        #/etc/init.d/headphones stop &>/dev/null
+        rm -Rf /opt/headphones & >/dev/null
 
-        rm -Rf /opt/headphones/* &>/dev/null
-
-        if [ -f "/var/run/headphones.pid" ]; then
-            PID=$(cat /var/run/headphones.pid);
+        if [ -f "/var/run/headphones/headphones.pid" ]; then
+            PID=$(cat /var/run/headphones/headphones.pid);
             kill -0 $PID 2>/dev/null;
+
+            if [ $? -eq 0 ]; then
+                kill -9 $PID;
+                rm -Rf /var/run/headphones
+            fi
         fi
+
         omv_config_delete "//services/headphones"
-        userdel headphones
-        ;;
+
+        if [ -d "/opt/headphones" ]; then
+            rm -Rf /opt/headphones/* &>/dev/null
+            rm -Rf /opt/headphones/.git &>/dev/null
+            rm -Rf /opt/headphones/.gitignore
+        fi
+
+        userdel -r headphones
+
+        if [ ! -d /opt ]; then
+            mkdir /opt
+            chmod 775 /opt
+        fi
+    ;;
 
     remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
-        ;;
+    ;;
 
     *)
         echo "postrm called with unknown argument '$1'" >&2
         exit 1
-        ;;
+    ;;
 esac
 
 exit 0

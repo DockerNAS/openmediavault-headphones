@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013 OpenMediaVault Plugin Developers
+ * Copyright (C) 2013-2014 OpenMediaVault Plugin Developers
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,8 +22,8 @@
 // require("js/omv/form/plugin/LinkedFields.js")
 
 Ext.define("OMV.module.admin.service.headphones.Settings", {
-    extend : "OMV.workspace.form.Panel",
-    uses   : [
+    extend   : "OMV.workspace.form.Panel",
+    requires : [
         "OMV.data.Model",
         "OMV.data.Store"
     ],
@@ -31,15 +31,15 @@ Ext.define("OMV.module.admin.service.headphones.Settings", {
     initComponent : function () {
         var me = this;
 
-        me.on('load', function () {
-            var checked = me.findField('enable').checked;
-            var showtab = me.findField('showtab').checked;
-            var parent = me.up('tabpanel');
+        me.on("load", function () {
+            var checked = me.findField("enable").checked;
+            var showtab = me.findField("showtab").checked;
+            var parent = me.up("tabpanel");
 
             if (!parent)
                 return;
 
-            var managementPanel = parent.down('panel[title=' + _("Web Interface") + ']');
+            var managementPanel = parent.down("panel[title=" + _("Web Interface") + "]");
 
             if (managementPanel) {
                 checked ? managementPanel.enable() : managementPanel.disable();
@@ -50,7 +50,7 @@ Ext.define("OMV.module.admin.service.headphones.Settings", {
         me.callParent(arguments);
     },
 
-    rpcService   : "headphones",
+    rpcService   : "Headphones",
     rpcGetMethod : "getSettings",
     rpcSetMethod : "setSettings",
 
@@ -72,22 +72,94 @@ Ext.define("OMV.module.admin.service.headphones.Settings", {
                 xtype      : "checkbox",
                 name       : "showtab",
                 fieldLabel : _("Show Tab"),
-                boxLabel   : _("Show tab containing headphones web interface frame."),
+                boxLabel   : _("Show tab containing Headphones web interface frame."),
                 checked    : false
+            },{
+                xtype      : "combo",
+                name       : "repo",
+                fieldLabel : _("Repository"),
+                allowBlank : false,
+                editable   : false,
+                queryMode  : "local",
+                store      : Ext.create("OMV.data.Store", {
+                    autoLoad : true,
+                    model    : OMV.data.Model.createImplicit({
+                        idProperty : "name",
+                        fields     : [{
+                            name : "url",
+                            type : "string"
+                        },{
+                            name : "name",
+                            type : "string"
+                        },{
+                            name : "branches",
+                            type : "array"
+                        }],
+                        proxy : {
+                            type    : "rpc",
+                            rpcData : {
+                                service : "Headphones",
+                                method  : "enumerateRepos"
+                            },
+                            appendSortParams : false
+                        }
+                    })
+                }),
+                displayField  : "name",
+                valueField    : "url",
+                triggerAction : "all",
+                selectOnFocus : true,
+                plugins       : [{
+                    ptype : "fieldinfo",
+                    text  : _("The repository you want to use. If changing from a current repository, setting will be wiped.")
+                }],
+                listeners : {
+                    select : function(combo, records) {
+                        var record = records.pop();
+                        me.updateBranchCombo(record.get("branches"));
+                    },
+                    change : function(combo, value) {
+                        var record = combo.store.findRecord("url", value);
+                        me.updateBranchCombo(record.get("branches"));
+                    }
+                }
+            },{
+                xtype         : "combo",
+                name          : "branch",
+                fieldLabel    : _("Branch"),
+                queryMode     : "local",
+                store         : [],
+                allowBlank    : false,
+                editable      : false,
+                triggerAction : "all",
+                plugins       : [{
+                    ptype : "fieldinfo",
+                    text  : _("The branch you want to use.")
+                }]
             },{
                 xtype   : "button",
                 name    : "openheadphones",
-                text    : _("headphones Web Interface"),
+                text    : _("Headphones Web Interface"),
                 scope   : this,
                 handler : function() {
                     var link = 'http://' + location.hostname + ':8181/';
-                    window.open(link, '_blank');
-                }
-            },{
-                border: false,
-                html: "<br />"
+                    window.open(link, "_blank");
+                },
+                margin : "0 0 5 0"
             }]
         }];
+    },
+
+    updateBranchCombo : function(values) {
+        var me = this;
+        var branchCombo = me.findField("branch");
+
+        branchCombo.store.removeAll();
+
+        for (var i = 0; i < values.length; i++) {
+            // TODO: Look over use of field1
+            branchCombo.store.add({ field1: values[i] });
+        }
     }
 });
 

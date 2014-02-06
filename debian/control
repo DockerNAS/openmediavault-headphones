@@ -8,6 +8,6 @@ Standards-Version: 3.9.3
 Package: openmediavault-headphones
 Architecture: all
 Depends: ${misc:Depends}, openmediavault (>= 0.5), openmediavault (<< 0.6),
- python
-Description: OpenMediaVault headphones plugin
- headphones is an automatic music downloader for SABnzbd.
+ python, git
+Description: OpenMediaVault Headphones plugin
+ Headphones is an automatic music downloader for SABnzbd.

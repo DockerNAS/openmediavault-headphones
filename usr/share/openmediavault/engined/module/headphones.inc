@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Copyright (C) 2013 OpenMediaVault Plugin Developers
+ * Copyright (C) 2013-2014 OpenMediaVault Plugin Developers
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,53 +26,62 @@ require_once "openmediavault/initscript.inc";
 class OMVModuleHeadphones extends OMVModuleServiceAbstract
     implements OMVINotifyListener, OMVIModuleServiceStatus {
 
+    private function getXPath()
+    {
+        return "//services/headphones";
+    }
+
     public function getName() {
         return "headphones";
     }
 
     public function getStatus() {
         global $xmlConfig;
-        $xpath  = "//services/headphones";
-        $object = $xmlConfig->get($xpath);
-        if (is_null($object))
-                        throw new OMVException(OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED, $xpath);
 
-	$cmd = "/etc/init.d/headphones status";
-        $this->exec($cmd, $output);
+        $object = $xmlConfig->get($this->getXPath());
+
+        if (is_null($object))
+            throw new OMVException(OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED,
+                $this->getXPath());
+
+        $initd = new OMVSysVInitScript($this->getName());
+
         return array(
             "name"    => $this->getName(),
-            "title"   => gettext("headphones"),
-            "enabled" => boolval($object['enable']),
-            "running" => (strpos($output[0], 'is running') > 0)
+            "title"   => gettext("Headphones"),
+            "enabled" => boolval($object["enable"]),
+            "running" => $initd->status() == 0
         );
+    }
+
+    public function applyConfig()
+    {
+        $cmd = "sudo omv-mkconf " . $this->getName() . " 2>&1";
+
+        if (0 !== $this->exec($cmd, $output))
+            throw new OMVException(OMVErrorMsg::E_EXEC_FAILED,
+                $cmd, implode("\n", $output));
     }
 
     public function startService() {
         global $xmlConfig;
-        $xpath  = "//services/headphones";
-        $object = $xmlConfig->get($xpath);
-        if (is_null($object))
-                        throw new OMVException(OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED, $xpath);
 
-        if(FALSE === boolval($object['enable']))
+        $object = $xmlConfig->get($this->getXPath());
+
+        if (is_null($object))
+            throw new OMVException(OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED,
+                $this->getXPath());
+
+        if (!boolval($object["enable"]))
             return;
 
-                $initd = new OMVSysVInitScript("headphones", TRUE);
-                $initd->exec();
+        $initd = new OMVSysVInitScript($this->getName(), true);
+        $initd->exec();
     }
 
     public function stopService() {
-        global $xmlConfig;
-        $xpath  = "//services/headphones";
-        $object = $xmlConfig->get($xpath);
-        if (is_null($object))
-                        throw new OMVException(OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED, $xpath);
-
-        if(TRUE === boolval($object['enable']))
-            return;
-
-                $initd = new OMVSysVInitScript("headphones", FALSE);
-                $initd->exec();
+        $initd = new OMVSysVInitScript($this->getName());
+        $initd->exec();
     }
 
     public function bindListeners(OMVNotifyDispatcher $dispatcher) {

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Copyright (C) 2013 OpenMediaVault Plugin Developers
+ * Copyright (C) 2013-2014 OpenMediaVault Plugin Developers
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,29 +26,34 @@ require_once "openmediavault/notify.inc";
 
 class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract {
 
+    private function getXPath()
+    {
+        return "//services/headphones";
+    }
+
     public function getName() {
-        return 'headphones';
+        return "Headphones";
     }
 
     public function initialize() {
-        $this->registerMethod('getSettings');
-        $this->registerMethod('setSettings');
+        $this->registerMethod("getSettings");
+        $this->registerMethod("setSettings");
+        $this->registerMethod("enumerateRepos");
     }
 
     function getSettings($params, $context) {
         global $xmlConfig;
 
-        // Validate the RPC caller context.
-        $this->validateMethodContext($context, array( "role" => OMV_ROLE_ADMINISTRATOR ));
+        $this->validateMethodContext($context, array(
+            "role" => OMV_ROLE_ADMINISTRATOR ));
 
-        // Get configuration object
-        $object = $xmlConfig->get("//services/headphones");
-        if (is_null($object))
+        $object = $xmlConfig->get($this->getXPath());
+
+        if(is_null($object))
             throw new OMVException(OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED, "//services/headphones");
 
-        // Modify result data
-        $object['enable']  = boolval($object['enable']);
-        $object['showtab'] = boolval($object['showtab']);
+        $object["enable"]  = boolval($object["enable"]);
+        $object["showtab"] = boolval($object["showtab"]);
 
         return $object;
     }
@@ -56,36 +61,53 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract {
     function setSettings($params, $context) {
         global $xmlConfig;
 
-        // Validate the RPC caller context.
-        $this->validateMethodContext($context, array( "role" => OMV_ROLE_ADMINISTRATOR ));
+        $this->validateMethodContext($context, array("role" => OMV_ROLE_ADMINISTRATOR));
 
-        // Validate the parameters of the RPC service method.
         $this->validateMethodParams($params, '{
             "type"       : "object",
             "properties" : {
                 "enable"  : { "type" : "boolean" },
-                "showtab" : { "type" : "boolean" }
+                "showtab" : { "type" : "boolean" },
+                "repo"    : { "type" : "string" },
+                "branch"  : { "type" : "string" }
             }
         }');
 
-        // Prepare configuration data
         $object = array(
-            "enable"  => array_boolval($params, 'enable'),
-            "showtab" => array_boolval($params, 'showtab'),
+            "enable"  => array_boolval($params, "enable"),
+            "showtab" => array_boolval($params, "showtab"),
+            "branch"  => $params["branch"],
+            "repo"    => $params["repo"]
         );
 
-        // Set configuration object
-        if (false === $xmlConfig->replace("//services/headphones", $object))
-            throw new OMVException(OMVErrorMsg::E_CONFIG_SET_OBJECT_FAILED, "//services/headphones");
+        if(false === $xmlConfig->replace($this->getXPath(), $object))
+            throw new OMVException(OMVErrorMsg::E_CONFIG_SET_OBJECT_FAILED, $this->getXPath());
 
-        // Notify configuration changes
         $dispatcher = &OMVNotifyDispatcher::getInstance();
         $dispatcher->notify(OMV_NOTIFY_MODIFY, "org.openmediavault.services.headphones", $object);
+    }
+
+    public function enumerateRepos($params, $context)
+    {
+        $this->validateMethodContext($context, array("role" => OMV_ROLE_ADMINISTRATOR));
+
+        $repos = array();
+
+        $repo = array(
+            "name"     => "Headphones - Main - rembo10/headphones",
+            "url"      => "https://github.com/rembo10/headphones.git",
+            "branches" => array(
+                "master",
+                "develop"
+            )
+        );
+
+        $repos[] = $repo;
+
+        return $repos;
     }
 }
 
 // Register the RPC service.
 $rpcServiceMgr = &OMVRpcServiceMgr::getInstance();
 $rpcServiceMgr->registerService(new OMVRpcServiceHeadphones());
-
-?>

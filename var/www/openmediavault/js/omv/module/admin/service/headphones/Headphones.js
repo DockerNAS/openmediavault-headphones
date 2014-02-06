@@ -20,7 +20,7 @@
 OMV.WorkspaceManager.registerNode({
     id      : "headphones",
     path    : "/service",
-    text    : _("headphones"),
+    text    : _("Headphones"),
     icon16  : "images/headphones.png",
     iconSvg : "images/headphones.svg"
 });

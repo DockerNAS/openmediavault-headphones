@@ -26,14 +26,14 @@ msgstr ""
 msgid "Show Tab"
 msgstr ""
 
-msgid "Show tab containing headphones web interface frame."
+msgid "Show tab containing Headphones web interface frame."
+msgstr ""
+
+msgid "Headphones"
+msgstr ""
+
+msgid "Headphones Web Interface"
 msgstr ""
 
 msgid "Web Interface"
-msgstr ""
-
-msgid "headphones"
-msgstr ""
-
-msgid "headphones Web Interface"
 msgstr ""
