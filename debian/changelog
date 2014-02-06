@@ -1,3 +1,9 @@
+openmediavault-headphones (0.5.3) stable; urgency=low
+
+  * Rewrite plugin
+
+ -- OpenMediaVault Plugin Developers <plugins@omv-extras.org>  Wed, 05 Feb 2014 22:38:27 -0500
+
 openmediavault-headphones (0.5.2) stable; urgency=low
 
   * Fix startup
