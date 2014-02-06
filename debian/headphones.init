@@ -24,8 +24,8 @@ PID_PATH=$(dirname $PID_FILE)
 NAME=headphones
 DESC=headphones
 DATA_DIR=/home/headphones/.headphones
-EXTRA_DAEMON_OPTS=" --data_dir=${DATA_DIR}"
-DAEMON_OPTS=" $APP_PATH/Headphones.py --q --daemon --pid_file=${PID_FILE} ${EXTRA_DAEMON_OPTS}"
+EXTRA_DAEMON_OPTS=" --datadir=${DATA_DIR} --config=${DATA_DIR}/config.ini"
+DAEMON_OPTS=" $APP_PATH/Headphones.py --quiet --daemon --nolaunch --pidfile=${PID_FILE} ${EXTRA_DAEMON_OPTS}"
 ############### END EDIT ME ##################
 
 # Get lsb functions
@@ -56,6 +56,21 @@ if [ -e $PID_FILE ]; then
         rm $PID_FILE
     fi
 fi
+
+if [ ! -f $DATA_DIR/config.ini ]; then
+    echo "[General]
+launch_browser = 0
+log_dir = /home/headphones/.headphones/logs
+cache_dir = /home/headphones/.headphones/cache
+git_path = git
+folder_permissions = 0777
+file_permissions = 0777" > $DATA_DIR/config.ini
+    chown $RUN_AS $PID_PATH
+    chown $RUN_AS $DATA_DIR/config.ini
+    chmod 775 $DATA_DIR/config.ini
+fi
+
+
 
 is_running() {
     if [ ! -e $PID_FILE ]; then
