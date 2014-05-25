@@ -26,13 +26,35 @@ require_once "openmediavault/initscript.inc";
 class OMVModuleHeadphones extends OMVModuleServiceAbstract
     implements OMVINotifyListener, OMVIModuleServiceStatus {
 
-    private function getXPath()
-    {
-        return "//services/headphones";
+    public function getName() {
+        return "Headphones";
     }
 
-    public function getName() {
-        return "headphones";
+    private function getPluginName() {
+        return strtolower($this->getName());
+    }
+
+    private function getEventMessagePath() {
+        $path = sprintf("org.openmediavault.service.%s", $this->getPluginName());
+        return $path;
+    }
+
+
+    private function getEventMessagePathFork() {
+        $path = sprintf("%s.forks.fork", $this->getEventMessagePath());
+        return $path;
+    }
+
+    private function getXPath() {
+        $path = sprintf("//services/%s", $this->getPluginName());
+        return $path;
+    }
+
+    public function applyConfig() {
+        $cmd = sprintf("omv-mkconf %s 2>&1", $this->getPluginName());
+
+        if (0 !== $this->exec($cmd, $output))
+            throw new OMVException(OMVErrorMsg::E_EXEC_FAILED, $cmd, implode("\n", $output));
     }
 
     public function getStatus() {
@@ -47,20 +69,11 @@ class OMVModuleHeadphones extends OMVModuleServiceAbstract
         $initd = new OMVSysVInitScript($this->getName());
 
         return array(
-            "name"    => $this->getName(),
-            "title"   => gettext("Headphones"),
+            "name"    => $this->getPluginName(),
+            "title"   => gettext($this->getName()),
             "enabled" => boolval($object["enable"]),
             "running" => $initd->status() == 0
         );
-    }
-
-    public function applyConfig()
-    {
-        $cmd = "sudo omv-mkconf " . $this->getName() . " 2>&1";
-
-        if (0 !== $this->exec($cmd, $output))
-            throw new OMVException(OMVErrorMsg::E_EXEC_FAILED,
-                $cmd, implode("\n", $output));
     }
 
     public function startService() {
@@ -75,20 +88,25 @@ class OMVModuleHeadphones extends OMVModuleServiceAbstract
         if (!boolval($object["enable"]))
             return;
 
-        $initd = new OMVSysVInitScript($this->getName(), true);
+        $initd = new OMVSysVInitScript($this->getPluginName(), true);
         $initd->exec();
     }
 
     public function stopService() {
-        $initd = new OMVSysVInitScript($this->getName());
+        $initd = new OMVSysVInitScript($this->getPluginName());
         $initd->exec();
     }
 
-    public function bindListeners(OMVNotifyDispatcher $dispatcher) {
+    function bindListeners(OMVNotifyDispatcher $dispatcher) {
         $dispatcher->addListener(
             OMV_NOTIFY_MODIFY,
-            "org.openmediavault.services.headphones",
+            $this->getEventMessagePath(),
             array($this, "setDirty"));
+
+        //$dispatcher->addListener(
+        //    OMV_NOTIFY_CREATE | OMV_NOTIFY_MODIFY | OMV_NOTIFY_DELETE,
+        //    $this->getEventMessagePathFork(),
+        //    array($this, "setDirty"));
     }
 }
 
