@@ -109,7 +109,7 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract {
 
         $output = array();
         if (file_exists("/home/headphones/.headphones/config.ini")) {
-            $cmd = "grep -m1 port /home/headphones/.headphones/config.ini | cut -d ' ' -f 3 2>&1";
+            $cmd = "grep ^http_port /home/headphones/.headphones/config.ini | cut -d ' ' -f 3 2>&1";
             $this->exec($cmd, $output);
             if ($output == "")
                 $output = "8181";
@@ -117,7 +117,7 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract {
             $output = "8181";
         }
 
-        $cmd = "sed -i 's/:[[:digit:]]\{4\}/:" . $output[0] . "/g' /var/www/openmediavault/js/omv/module/admin/service/headphones/WebInterface.js";
+        $cmd = "sed -i 's/:[[:digit:]].*\//:" . $output[0] . "\//g' /var/www/openmediavault/js/omv/module/admin/service/headphones/WebInterface.js";
         $this->exec($cmd);
 
         $object["enable"]  = boolval($object["enable"]);
