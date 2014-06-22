@@ -111,10 +111,10 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract {
         if (file_exists("/home/headphones/.headphones/config.ini")) {
             $cmd = "grep ^http_port /home/headphones/.headphones/config.ini | cut -d ' ' -f 3 2>&1";
             $this->exec($cmd, $output);
-            if ($output == "")
-                $output = "8181";
+            if ($output[0] == "")
+                $output[0] = "8181";
         } else {
-            $output = "8181";
+            $output[0] = "8181";
         }
 
         $cmd = "sed -i 's/:[[:digit:]].*\//:" . $output[0] . "\//g' /var/www/openmediavault/js/omv/module/admin/service/headphones/WebInterface.js";
