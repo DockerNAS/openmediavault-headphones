@@ -202,7 +202,7 @@ Ext.define("OMV.module.admin.service.headphones.Settings", {
                     proxy : {
                         type : "rpc",
                         rpcData : {
-                            service : "Headphones",
+                            service : "ShareMgmt",
                             method  : "getCandidates"
                         },
                         appendSortParams : false
