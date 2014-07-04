@@ -21,13 +21,16 @@ require_once "openmediavault/config.inc";
 require_once "openmediavault/error.inc";
 require_once "openmediavault/notify.inc";
 require_once "openmediavault/object.inc";
+require_once "openmediavault/product.inc";
 require_once "openmediavault/rpcservice.inc";
+require_once "openmediavault/system.inc";
 require_once "openmediavault/util.inc";
-require_once("openmediavault/product.inc");
-require_once("openmediavault/system.inc");
 
 class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
 {
+    private $headphonesSettingsDir = "/home/headphones/.headphones/";
+    private $headphonesSettingsFile = "/home/headphones/.headphones/config.ini";
+
     private function getPluginName()
     {
         return strtolower($this->getName());
@@ -38,11 +41,6 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
         return sprintf("org.openmediavault.service.%s", $this->getPluginName());
     }
 
-    private function getEventMessagePathFork()
-    {
-        return sprintf("%s.forks.fork", $this->getEventMessagePath());
-    }
-
     private function getXPath()
     {
         return sprintf("//services/%s", $this->getPluginName());
@@ -50,7 +48,7 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
 
     private function getXPathForks()
     {
-        returnsprintf("%s/forks", $this->getXPath());
+        return sprintf("%s/forks", $this->getXPath());
     }
 
     private function getXPathFork()
@@ -61,33 +59,6 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
     public function getName()
     {
         return "Headphones";
-    }
-
-    public function startService()
-    {
-        global $xmlConfig;
-
-        $object = $xmlConfig->get($this->getXPath());
-
-        if (is_null($object)) {
-            throw new OMVException(
-                OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED,
-                $this->getXPath()
-            );
-        }
-
-        if (!boolval($object["enable"])) {
-            return;
-        }
-
-        $initd = new OMVSysVInitScript($this->getPluginName(), true);
-        $initd->exec();
-    }
-
-    public function stopService()
-    {
-        $initd = new OMVSysVInitScript($this->getPluginName());
-        $initd->exec();
     }
 
     public function initialize()
@@ -109,37 +80,40 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
     {
         global $xmlConfig;
 
-        $this->validateMethodContext($context, array("role" => OMV_ROLE_ADMINISTRATOR));
+        $this->validateMethodContext($context, array(
+            "role" => OMV_ROLE_ADMINISTRATOR
+        ));
 
         $object = $xmlConfig->get($this->getXPath());
 
         if (is_null($object)) {
             throw new OMVException(
                 OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED,
-                $xpath
+                $XPath
             );
         }
 
-        // Get current port as set in couchpotatos config file
-        $output = array();
+        $port = 8181;
 
-        if (file_exists("/home/headphones/.headphones/config.ini")) {
-            $cmd = "grep ^http_port /home/headphones/.headphones/config.ini | cut -d ' ' -f 3 2>&1";
-            $this->exec($cmd, $output);
+        // Get current port as set in headphones config file
+        if (file_exists($this->headphonesSettingsFile)) {
+            $config = parse_ini_file(
+                $this->headphonesSettingsFile,
+                true,
+                INI_SCANNER_RAW
+            );
 
-            if (strlen($output[0]) != 4) {
-                $output[0] = "8181";
+            if (!empty($config["General"]["http_port"])) {
+                $port = $config["General"]["http_port"];
             }
-        } else {
-            $output[0] = "8181";
         }
 
         $object["enable"]  = boolval($object["enable"]);
         $object["showtab"] = boolval($object["showtab"]);
-        $object["port"]    = $output[0];
+        $object["port"]    = intval($port);
 
         // Remove useless fields from the result object.
-        unset($object['forks']);
+        unset($object["forks"]);
 
         return $object;
     }
@@ -148,7 +122,9 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
     {
         global $xmlConfig;
 
-        $this->validateMethodContext($context, array("role" => OMV_ROLE_ADMINISTRATOR));
+        $this->validateMethodContext($context, array(
+            "role" => OMV_ROLE_ADMINISTRATOR
+        ));
 
         $this->validateMethodParams(
             $params,
@@ -166,12 +142,12 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
             }'
         );
 
-        $xpath = sprintf("//system/fstab/mntent[uuid='%s']", $params['mntentref']);
-        $deviceDir = $xmlConfig->get($xpath);
-        $deviceDir = $deviceDir['dir'];
+        $xPath = sprintf("//system/fstab/mntent[uuid='%s']", $params["mntentref"]);
+        $deviceDir = $xmlConfig->get($xPath);
+        $deviceDir = $deviceDir["dir"];
 
-        $backupPath = "{$deviceDir}/HPbackup";
-        $params['path'] = $backupPath;
+        $backupPath = "$deviceDir/HPbackup";
+        $params["path"] = $backupPath;
 
         // Get existing configuration object
         $oldObject = $xmlConfig->get($this->getXPath());
@@ -179,7 +155,7 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
         if (is_null($oldObject)) {
             throw new OMVException(
                 OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED,
-                $xpath
+                $xPath
             );
         }
 
@@ -191,7 +167,7 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
             "port"      => $params["port"],
             "mntentref" => $params["mntentref"],
             "path"      => $params["path"],
-            "forks"     => isset($oldObject['forks']) ? $oldObject['forks'] : array(),
+            "forks"     => isset($oldObject["forks"]) ? $oldObject["forks"] : array(),
         );
 
         if (false === $xmlConfig->replace($this->getXPath(), $object)) {
@@ -202,7 +178,11 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
         }
 
         $dispatcher = &OMVNotifyDispatcher::getInstance();
-        $dispatcher->notify(OMV_NOTIFY_MODIFY, $this->getEventMessagePath(), $object);
+        $dispatcher->notify(
+            OMV_NOTIFY_MODIFY,
+            $this->getEventMessagePath(),
+            $object
+        );
 
         return $object;
     }
@@ -232,7 +212,7 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
         $objects = $xmlConfig->getList($this->getXPathFork());
 
         if (is_null($objects)) {
-            throw new OMVException(OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED, $xpath);
+            throw new OMVException(OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED, $XPath);
         }
 
         // Filter the result.
@@ -245,13 +225,14 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
         );
     }
 
-
     public function getFork($params, $context)
     {
         global $xmlConfig;
 
         // Validate the RPC caller context.
-        $this->validateMethodContext($context, array("role" => OMV_ROLE_ADMINISTRATOR));
+        $this->validateMethodContext($context, array(
+            "role" => OMV_ROLE_ADMINISTRATOR
+        ));
 
         // Validate the parameters of the RPC service method.
         $this->validateMethodParams(
@@ -265,11 +246,14 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
         );
 
         // Get the configuration object.
-        $xpath = sprintf("%s[uuid='%s']", $this->getXPathFork(), $params["uuid"]);
-        $object = $xmlConfig->get($xpath);
+        $xPath = sprintf("%s[uuid='%s']", $this->getXPathFork(), $params["uuid"]);
+        $object = $xmlConfig->get($xPath);
 
         if (is_null($object)) {
-            throw new OMVException(OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED, $xpath);
+            throw new OMVException(
+                OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED,
+                $xPath
+            );
         }
 
         return $object;
@@ -280,7 +264,9 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
         global $xmlConfig;
 
         // Validate the RPC caller context.
-        $this->validateMethodContext($context, array("role" => OMV_ROLE_ADMINISTRATOR));
+        $this->validateMethodContext($context, array(
+            "role" => OMV_ROLE_ADMINISTRATOR
+        ));
 
         // Validate the parameters of the RPC service method.
         $this->validateMethodParams(
@@ -288,22 +274,29 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
             '{
                 "type"       : "object",
                 "properties" : {
-                    "uuid"     : { ' . $GLOBALS["OMV_JSONSCHEMA_UUID_UNDEFINED"] . ' },
-                    "name"     : { "type" : "string" },
-                    "fork"     : { "type" : "string" }
+                    "uuid" : { ' . $GLOBALS["OMV_JSONSCHEMA_UUID_UNDEFINED"] . ' },
+                    "name" : { "type" : "string" },
+                    "fork" : { "type" : "string" }
                 }
             }'
         );
 
-        // TODO: Check if valid fork. A valid fork should start with either http(s):// or git://
+        // Check if valid fork. A valid fork should start with
+        // either http(s):// or git://
         if (substr($params["fork"], 0, 4) !== "http" &&
             substr($params["fork"], 0, 3) !== "git"
         ) {
-            throw new OMVException(OMVErrorMsg::E_EXEC_MISC, "Not valid git repo");
+            throw new OMVException(
+                OMVErrorMsg::E_EXEC_MISC,
+                "Not valid git repo"
+            );
         }
 
-        // If valid query repo for a list of branches.
-        $cmd = "git ls-remote -h " . $params["fork"] . " | sed 's?.*refs/heads/??'";
+        // Query repo for a list of branches.
+        $cmd = "git ls-remote -h "
+             . $params["fork"]
+             . " | sed 's?.*refs/heads/??'";
+
         $this->exec($cmd, $output);
 
         if (empty($output)) {
@@ -322,7 +315,8 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
 
         // Prepare configuration data and add all branches found
         $object = array(
-            "uuid"        => ($params["uuid"] == $GLOBALS["OMV_UUID_UNDEFINED"]) ? OMVUtil::uuid() : $params["uuid"],
+            "uuid"        => ($params["uuid"] == $GLOBALS["OMV_UUID_UNDEFINED"])
+                ? OMVUtil::uuid() : $params["uuid"],
             "name"        => $params["name"],
             "fork"        => $params["fork"],
             "branches"    => $output,
@@ -333,23 +327,22 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
 
         if ($params["uuid"] == $GLOBALS["OMV_UUID_UNDEFINED"]) {
             // Append object to configuration.
-            $success = $xmlConfig->set($this->getXPathForks(), array("fork" => $object));
+            $success = $xmlConfig->set(
+                $this->getXPathForks(),
+                array("fork" => $object)
+            );
         } else {
             // Update existing configuration object.
-            $xpath = sprintf("%s[uuid='%s']", $this->getXPathFork(), $params["uuid"]);
+            $xPath = sprintf(
+                "%s[uuid='%s']",
+                $this->getXPathFork(),
+                $params["uuid"]
+            );
         }
 
         if ($success === false) {
             throw new OMVException(OMVErrorMsg::E_CONFIG_SET_OBJECT_FAILED);
         }
-
-        // Notify configuration changes.
-        $dispatcher = &OMVNotifyDispatcher::getInstance();
-        $dispatcher->notify(
-            ($params["uuid"] == $GLOBALS["OMV_UUID_UNDEFINED"]) ?OMV_NOTIFY_CREATE : OMV_NOTIFY_MODIFY,
-            $this->getEventMessagePathFork(),
-            $object
-        );
 
         // Return the configuration object.
         return $object;
@@ -360,7 +353,9 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
         global $xmlConfig;
 
         // Validate the RPC caller context.
-        $this->validateMethodContext($context, array("role" => OMV_ROLE_ADMINISTRATOR));
+        $this->validateMethodContext($context, array(
+            "role" => OMV_ROLE_ADMINISTRATOR
+        ));
 
         // Validate the parameters of the RPC service method.
         $this->validateMethodParams(
@@ -374,21 +369,28 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
         );
 
         // Delete the configuration object.
-        $xpath = sprintf("%s[uuid='%s']", $this->getXPathFork(), $params["uuid"]);
+        $xPath = sprintf("%s[uuid='%s']", $this->getXPathFork(), $params["uuid"]);
 
-        return $this->deleteConfigObjectByPath($xpath, $this->getEventMessagePathFork());
+        return $this->deleteConfigObjectByPath($xPath);
     }
 
     public function doBackup($params, $context)
     {
         global $xmlConfig;
-        //Headphones needs to have run once to generate its settings. Check if this is true
-        if (! file_exists("/home/headphones/.headphones/config.ini")) {
-            throw new OMVException(OMVErrorMsg::E_EXEC_MISC, "No settings folder found!");
+
+        //Headphones needs to have run once to generate its
+        // settings. Check if this is true
+        if (!file_exists($this->headphonesSettingsFile)) {
+            throw new OMVException(
+                OMVErrorMsg::E_EXEC_MISC,
+                "No settings folder found!"
+            );
         }
 
         // Validate the RPC caller context.
-        $this->validateMethodContext($context, array("role" => OMV_ROLE_ADMINISTRATOR));
+        $this->validateMethodContext($context, array(
+            "role" => OMV_ROLE_ADMINISTRATOR
+        ));
 
         // Create a background process.
         $bgStatusFilename = $this->createBgProcStatus();
@@ -403,15 +405,26 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
         // Child process.
         try {
             $bgOutputFilename = $this->createBgProcOutput();
-            $this->updateBgProcStatus($bgStatusFilename, "outputfilename", $bgOutputFilename);
+            $this->updateBgProcStatus(
+                $bgStatusFilename,
+                "outputfilename",
+                $bgOutputFilename
+            );
 
-            $path = $xmlConfig->get("//services/headphones/path");
+            // Get the configuration object.
+            $xPath = sprintf("%s/path", $this->getXPath());
+            $backupPath = $xmlConfig->get($xPath);
 
-            $cmd = sprintf("tar -zcvf %s /home/headphones/.headphones 2>&1", $path);
+            $cmd = sprintf(
+                "tar -zcvPf %s %s 2>&1",
+                $backupPath,
+                $this->headphonesSettingsDir
+            );
+
             $this->exec($cmd, $output, $bgOutputFilename);
             $this->finalizeBgProcStatus($bgStatusFilename, $output);
             exit(0);
-        } catch(Exception $e) {
+        } catch (\Exception $e) {
             $this->finalizeBgProcStatus($bgStatusFilename, "", $e);
             exit(1);
         }
@@ -422,43 +435,59 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
         global $xmlConfig;
 
         // Validate the RPC caller context.
-        $this->validateMethodContext($context, array("role" => OMV_ROLE_ADMINISTRATOR));
+        $this->validateMethodContext($context, array(
+            "role" => OMV_ROLE_ADMINISTRATOR
+        ));
 
         // Get the configuration object.
-        $path = $xmlConfig->get("//services/headphones/path");
-        $dirPath = "/home/headphones/.headphones";
-        if (is_null($path)) {
-            throw new OMVException(OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED, $xpath);
+        $xPath = sprintf("%s/path", $this->getXPath());
+        $backupPath = $xmlConfig->get($xPath);
+
+        if (is_null($backupPath)) {
+            throw new OMVException(
+                OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED,
+                $xPath
+            );
         }
 
         // Check if backup is present.
-        if (file_exists($path)) {
+        if (file_exists($backupPath)) {
             // Create a background process.
             $bgStatusFilename = $this->createBgProcStatus();
             $pid = $this->fork();
-            if($pid > 0) { // Parent process.
+
+            // Parent process.
+            if ($pid > 0) {
                 $this->initializeBgProcStatus($bgStatusFilename, $pid);
                 return $bgStatusFilename;
             }
 
-            // Delete current folder
-            system("rm -rf " . escapeshellarg($dirPath));
+            // Delete current settings folder
+            rmdir($this->headphonesSettingsDir);
+
+            // Get the Headphones module
+            $moduleMgr = &OMVModuleMgr::getInstance();
+            $headphonesModule = $moduleMgr->getModule($this->getName());
 
             // Child process.
             try {
-                $this->stopService();
+                $headphonesModule->stopService();
                 $bgOutputFilename = $this->createBgProcOutput();
-                $this->updateBgProcStatus($bgStatusFilename, "outputfilename", $bgOutputFilename);
+                $this->updateBgProcStatus(
+                    $bgStatusFilename,
+                    "outputfilename",
+                    $bgOutputFilename
+                );
 
-                $cmd = sprintf("tar -zxvf %s -C / 2>&1", $path);
+                $cmd = sprintf("tar -zxvf %s -C / 2>&1", $backupPath);
 
                 $this->exec($cmd, $output, $bgOutputFilename);
                 $this->finalizeBgProcStatus($bgStatusFilename, $output);
-                $this->startService();
+                $headphonesModule->startService();
                 exit(0);
             } catch (\Exception $e) {
                 $this->finalizeBgProcStatus($bgStatusFilename, "", $e);
-                $this->startService();
+                $headphonesModule->startService();
                 exit(1);
             }
         } else {
@@ -470,17 +499,24 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
     {
         global $xmlConfig;
 
-        $this->validateMethodContext($context, array("role" => OMV_ROLE_ADMINISTRATOR));
+        $this->validateMethodContext($context, array(
+            "role" => OMV_ROLE_ADMINISTRATOR
+        ));
 
         // Get configuration data.
-        $objects = $xmlConfig->getList($this->getXPathFork());
+        $userRepos = $xmlConfig->getList($this->getXPathFork());
 
-        if (is_null($objects)) {
-            throw new OMVException(OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED, $xpath);
+        if (is_null($userRepos)) {
+            throw new OMVException(
+                OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED,
+                $this->getXPathFork()
+            );
         }
-        // Add default fork and its branches. Do it here so users can't delete the main branch.
-        $repo = array(
-            "0" => array(
+
+        // Add default repos and their branches. Do it here so users can't
+        // delete them.
+        $defaultRepos = array(
+            array(
                 "uuid" => "11111111-2222-3333-4444-555555555555",
                 "name" => "Main Branch",
                 "fork" => "https://github.com/rembo10/headphones.git",
@@ -491,7 +527,7 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
             )
         );
         // Add any user added forks and branches
-        $repos = array_merge($repo, $objects);
+        $repos = array_merge($defaultRepos, $userRepos);
 
         return $repos;
     }
