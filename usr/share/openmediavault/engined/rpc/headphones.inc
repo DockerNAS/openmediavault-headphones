@@ -89,7 +89,7 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
         if (is_null($object)) {
             throw new OMVException(
                 OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED,
-                $XPath
+                $this->getXPath()
             );
         }
 
@@ -155,7 +155,7 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
         if (is_null($oldObject)) {
             throw new OMVException(
                 OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED,
-                $xPath
+                $this->getXPath()
             );
         }
 
@@ -212,7 +212,7 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
         $objects = $xmlConfig->getList($this->getXPathFork());
 
         if (is_null($objects)) {
-            throw new OMVException(OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED, $XPath);
+            throw new OMVException(OMVErrorMsg::E_CONFIG_GET_OBJECT_FAILED, $this->getXPathFork());
         }
 
         // Filter the result.
@@ -424,7 +424,7 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
             $this->exec($cmd, $output, $bgOutputFilename);
             $this->finalizeBgProcStatus($bgStatusFilename, $output);
             exit(0);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->finalizeBgProcStatus($bgStatusFilename, "", $e);
             exit(1);
         }
@@ -485,7 +485,7 @@ class OMVRpcServiceHeadphones extends OMVRpcServiceAbstract
                 $this->finalizeBgProcStatus($bgStatusFilename, $output);
                 $headphonesModule->startService();
                 exit(0);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $this->finalizeBgProcStatus($bgStatusFilename, "", $e);
                 $headphonesModule->startService();
                 exit(1);
